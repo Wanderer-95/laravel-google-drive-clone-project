@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Kalnoy\Nestedset\NodeTrait;
 
@@ -15,7 +16,7 @@ class File extends Model
 {
     use HasCreatorAndUpdater, NodeTrait, SoftDeletes;
 
-    protected $fillable = ['parent_id', 'name', 'path', 'size', 'created_by', 'updated_by', '_lft', '_rgt', 'is_folder', 'mime'];
+    protected $fillable = ['parent_id', 'name', 'path', 'size', 'created_by', 'updated_by', '_lft', '_rgt', 'is_folder', 'mime', 'storage_path'];
 
     protected $appends = ['file_size'];
 
@@ -47,7 +48,7 @@ class File extends Model
         $power = floor(log($size, 1024));
         $power = min($power, count($units) - 1);
 
-        return number_format($size / pow(1024, $power), 2, '.', ' ') . ' ' . $units[$power];
+        return number_format($size / pow(1024, $power), 2, '.', ' ').' '.$units[$power];
     }
 
     public function user(): BelongsTo
@@ -62,6 +63,17 @@ class File extends Model
         );
     }
 
+    private static function deleteStorageFiles($children): void
+    {
+        foreach ($children as $child) {
+            if ($child->is_folder) {
+                static::deleteStorageFiles($child->children()->withTrashed()->get());
+            } else {
+                Storage::delete($child->storage_path);
+            }
+        }
+    }
+
     protected static function boot(): void
     {
         parent::boot();
@@ -73,6 +85,14 @@ class File extends Model
             }
 
             $file->path = (! $file->parent->isRoot() ? $file->parent->path.'/' : '').Str::slug($file->name);
+        });
+
+        static::deleted(static function (File $file) {
+            if (! $file->is_folder) {
+                if (Storage::exists($file->storage_path)) {
+                    Storage::delete($file->storage_path);
+                }
+            }
         });
     }
 }

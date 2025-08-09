@@ -11,9 +11,9 @@ class StoreFileRequest extends ParentIdBaseRequest
 {
     protected function prepareForValidation()
     {
-        $paths = array_filter($this->relativePaths ?? null, fn($path) => $path !== null);
+        $paths = array_filter($this->relativePaths ?? null, fn ($path) => $path !== null);
         $this->merge([
-            'folderName' => $this->detectFolderName($paths)
+            'folderName' => $this->detectFolderName($paths),
         ]);
     }
 
@@ -30,7 +30,7 @@ class StoreFileRequest extends ParentIdBaseRequest
                 'required',
                 'file',
                 function ($attribute, $value, $fail) {
-                    if (!$this->folderName) {
+                    if (! $this->folderName) {
                         /** @var $value UploadedFile */
                         $file = File::query()
                             ->where('name', $value->getClientOriginalName())
@@ -39,7 +39,7 @@ class StoreFileRequest extends ParentIdBaseRequest
                             ->whereNull('deleted_at')
                             ->exists();
                         if ($file) {
-                            $fail('The file "' . $value->getClientOriginalName() . '" already exists!');
+                            $fail('The file "'.$value->getClientOriginalName().'" already exists!');
                         }
                     }
                 },
@@ -56,12 +56,12 @@ class StoreFileRequest extends ParentIdBaseRequest
                             ->whereNull('deleted_at')
                             ->exists();
                         if ($file) {
-                            $fail('The folder "' . $value . '" already exists!');
+                            $fail('The folder "'.$value.'" already exists!');
                         }
                     }
 
-                }
-            ]
+                },
+            ],
         ]);
     }
 
@@ -78,8 +78,7 @@ class StoreFileRequest extends ParentIdBaseRequest
 
     private function buildFileTree(array $relativePaths, array $files): ?array
     {
-        if (is_null($relativePaths[0]))
-        {
+        if (is_null($relativePaths[0])) {
             return null;
         }
 
@@ -91,7 +90,7 @@ class StoreFileRequest extends ParentIdBaseRequest
             $currentNode = &$tree;
 
             foreach ($parts as $key => $part) {
-                if (!isset($currentNode[$part])) {
+                if (! isset($currentNode[$part])) {
                     $currentNode[$part] = [];
                 }
 

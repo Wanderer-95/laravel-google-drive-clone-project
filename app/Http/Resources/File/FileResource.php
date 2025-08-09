@@ -26,7 +26,7 @@ class FileResource extends JsonResource
             'updated_at' => $this->updated_at->diffForHumans(),
             'size' => $this->file_size,
             'path' => $this->path,
-            'mime' => $this->mime
+            'mime' => $this->mime,
         ];
     }
 }

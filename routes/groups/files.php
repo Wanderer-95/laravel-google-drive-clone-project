@@ -11,4 +11,6 @@ Route::controller(FileController::class)
             ->name('myFiles');
         Route::post('/folder/create', 'createFolder')->name('folder.create');
         Route::post('/file', 'store')->name('file.store');
+        Route::delete('/file/delete', 'destroy')->name('file.delete');
+        Route::get('/file/download', 'download')->name('file.download');
     });

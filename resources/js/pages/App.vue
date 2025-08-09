@@ -2,11 +2,12 @@
 import Navigation from '@/components/app/Navigation.vue';
 import SearchForm from '@/components/app/SearchForm.vue';
 import UserSettingsDropdown from '@/components/app/UserSettingsDropdown.vue';
-import { emitter, FILE_UPLOADED_STARTED, showErrorDialog } from '@/eventBus.js';
-import { onMounted, ref } from 'vue';
+import { emitter, FILE_UPLOADED_STARTED, showErrorDialog, showSuccessNotification } from '@/eventBus.js';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import FileProgress from '@/components/app/FileProgress.vue';
 import ErrorDialog from '@/components/app/ErrorDialog.vue';
+import Notification from '@/components/app/Notification.vue';
 
 const page = usePage();
 const dragOver = ref(false);
@@ -18,6 +19,9 @@ const uploadFileForm = useForm({
 
 onMounted(() => {
     emitter.on(FILE_UPLOADED_STARTED, uploadFiles);
+});
+onUnmounted(() => {
+    emitter.off(FILE_UPLOADED_STARTED, uploadFiles);
 });
 
 function handleDrop(e) {
@@ -36,6 +40,9 @@ function uploadFiles(files) {
     uploadFileForm.parent_id = page.props.parentFolder.id;
     uploadFileForm.files = files;
     uploadFileForm.post(route('file.store'), {
+        onSuccess: () => {
+            showSuccessNotification(files.length + ' Files success downloaded');
+        },
         onError: (err) => {
             let message = '';
 
@@ -89,6 +96,7 @@ function onDragLeave() {
             </div>
             <ErrorDialog />
             <FileProgress :uploadFileForm="uploadFileForm"/>
+            <Notification/>
             <div class="flex flex-1 flex-col">
                 <slot />
             </div>

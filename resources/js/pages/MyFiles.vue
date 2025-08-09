@@ -1,11 +1,17 @@
 <script setup>
+import FileIcon from '@/components/app/FileIcon.vue';
+import { httpGet } from '@/helper/httpHelper.js';
 import Dashboard from '@/pages/Dashboard.vue';
 import { Link, router } from '@inertiajs/vue3';
-import FileIcon from '@/components/app/FileIcon.vue';
-import { onMounted, onUpdated, ref, watch } from 'vue';
-import { httpGet } from '@/helper/httpHelper.js';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import DeleteFilesButton from '@/components/app/DeleteFilesButton.vue';
+import DownloadFilesButton from '@/components/app/DownloadFilesButton.vue';
 
 const loadMoreIntersect = ref(null);
+const selectAllFiles = ref(false);
+const selectedFiles = ref({});
+const isShiftPressed = ref(false);
+const lastSelectedIndex = ref(null);
 
 const props = defineProps({
     files: Object,
@@ -27,7 +33,6 @@ function loadMore() {
         allFiles.value.data = [...allFiles.value.data, ...res.data];
         allFiles.value.next = res.links.next;
     });
-    console.log(allFiles.value);
 }
 
 function openFolder(file) {
@@ -39,12 +44,49 @@ function openFolder(file) {
     });
 }
 
-onUpdated(() => {
-    allFiles.value = {
-        data: props.files.data,
-        next: props.files.links.next,
+function onSelectAllFiles() {
+    allFiles.value.data.forEach((file) => {
+        selectedFiles.value[file.id] = selectAllFiles.value;
+    });
+}
+
+function onToggleFileSelect(file) {
+    const index = allFiles.value.data.findIndex(f => f.id === file.id);
+
+    if (isShiftPressed.value && lastSelectedIndex.value !== null) {
+        const start = Math.min(lastSelectedIndex.value, index);
+        const end = Math.max(lastSelectedIndex.value, index);
+
+        for (let i = start; i <= end; i++) {
+            const id = allFiles.value.data[i].id;
+            selectedFiles.value[id] = true;
+        }
+    } else {
+        selectedFiles.value[file.id] = !selectedFiles.value[file.id];
     }
-})
+
+    lastSelectedIndex.value = index;
+
+    onSelectCheckboxChange(file);
+}
+
+function onSelectCheckboxChange(file) {
+    if (!selectedFiles.value[file.id]) {
+        selectAllFiles.value = false;
+        return;
+    }
+
+    selectAllFiles.value = allFiles.value.data.every((f) => selectedFiles.value[f.id]);
+}
+
+const selectIds = computed(() => Object.entries(selectedFiles.value).filter(f => f[1]).map(f => f[0]));
+
+function onDelete(deletedFiles) {
+    selectAllFiles.value = false;
+    selectedFiles.value = {};
+    allFiles.value.data = allFiles.value.data.filter(f => !deletedFiles.ids.includes(String(f.id)));
+
+}
 
 onMounted(() => {
     const observer = new IntersectionObserver((entries) => entries.forEach((entry) => entry.isIntersecting && loadMore()), {
@@ -52,6 +94,19 @@ onMounted(() => {
     });
 
     observer.observe(loadMoreIntersect.value);
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Shift') isShiftPressed.value = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.key === 'Shift') isShiftPressed.value = false;
+    });
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('keydown', () => {});
+    window.removeEventListener('keyup', () => {});
 });
 
 watch(
@@ -61,7 +116,7 @@ watch(
             data: newFiles.data,
             next: newFiles.links.next,
         };
-    }
+    },
 );
 </script>
 
@@ -95,12 +150,21 @@ watch(
                     </Link>
                 </div>
             </template>
+            <DownloadFilesButton :all="selectAllFiles" :ids="selectIds" />
+            <DeleteFilesButton :deletedAllFiles="selectAllFiles" :deleteFilesIds="selectIds" @delete="onDelete" />
         </nav>
-
-        <div class="max-h-[550px] overflow-auto">
+        <div class="max-h-[500px] overflow-auto">
             <table class="min-w-full rounded-lg border border-gray-200 bg-white shadow-md">
                 <thead>
                     <tr class="bg-gray-100 text-left text-sm tracking-wider text-gray-700 uppercase">
+                        <th v-if="allFiles.data.length > 0" class="border-b px-6 py-3 pr-0">
+                            <input
+                                @change="onSelectAllFiles"
+                                v-model="selectAllFiles"
+                                type="checkbox"
+                                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring focus:ring-blue-400"
+                            />
+                        </th>
                         <th class="border-b px-6 py-3">Name</th>
                         <th class="border-b px-6 py-3">Owner</th>
                         <th class="border-b px-6 py-3">Last Modified</th>
@@ -113,7 +177,16 @@ watch(
                         v-for="file of allFiles.data"
                         :key="file.id"
                         @dblclick="openFolder(file)"
+                        @click="onToggleFileSelect(file)"
                     >
+                        <td class="border-b px-6 py-3 pr-0">
+                            <input
+                                v-model="selectedFiles[file.id]"
+                                :checked="selectedFiles[file.id] || selectAllFiles"
+                                type="checkbox"
+                                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring focus:ring-blue-400"
+                            />
+                        </td>
                         <td class="flex items-center gap-2 border-b px-6 py-4">
                             <FileIcon :file="file" />
                             {{ file.name }}
