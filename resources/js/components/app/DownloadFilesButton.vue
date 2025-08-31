@@ -24,11 +24,15 @@ const props = defineProps({
 })
 
 function getDownloadFilesUrl() {
-    let url = 'file.download';
+    let url = route('file.download');
     if (props.sharedWithMe) {
-        url = 'shared-with-me-download';
+        url = route('shared-download', {
+            type: 'with-me'
+        })
     } else if (props.sharedByMe) {
-        url = 'shared-by-me-download';
+        url = route('shared-download', {
+            type: 'by-me'
+        })
     }
     return url;
 }
@@ -52,7 +56,8 @@ function download() {
             p.append('ids[]', id);
         }
     }
-    httpGet(route(url)+'?'+p.toString())
+
+    httpGet(url+'?'+p.toString())
         .then(res => {
             if (! res.url) return;
 

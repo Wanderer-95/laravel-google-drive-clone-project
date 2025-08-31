@@ -1,18 +1,28 @@
-<script setup lang="ts">
+<script setup>
 
 import { Input } from '@/components/ui/input';
-import { useForm } from '@inertiajs/vue3';
+import { onMounted, ref } from 'vue';
+import { router } from '@inertiajs/vue3';
 
-const form = useForm({
-    search: '',
-})
+const search = ref('');
+const params = ref('');
+
+function onSearch() {
+    params.value.append('search', search.value);
+    router.get(window.location.pathname + '?' + params.value.toString());
+}
+
+onMounted(() => {
+    params.value = new URLSearchParams(window.location.search);
+    search.value = params.value.get('search');
+});
 
 </script>
 
 <template>
 
     <div class="w-96">
-        <Input type="text" placeholder="Search for files and folders" v-model="form.search" class="border-slate-400"/>
+        <Input @keyup.enter.prevent="onSearch" type="text" placeholder="Search for files and folders" v-model="search" class="border-slate-400"/>
     </div>
 
 </template>

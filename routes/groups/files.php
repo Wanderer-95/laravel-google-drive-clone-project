@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 Route::controller(FileController::class)
     ->middleware(['auth', 'verified'])
     ->group(function () {
+        Route::get('/', 'home');
         Route::get('/my-files/{folder?}', 'myFiles')
             ->where('folder', '(.*)')
             ->name('myFiles');
@@ -16,7 +17,9 @@ Route::controller(FileController::class)
         Route::post('/file/favorite', 'addFavorite')->name('file.add-favorite');
         Route::post('/file/share', 'share')->name('file.share');
         Route::get('/sharedWithMe', 'sharedWithMe')->name('shared-with-me');
-        Route::get('/sharedWithMe/download', 'sharedWithMeDownload')->name('shared-with-me-download');
+        Route::get('/shared-download/{type}', 'sharedDownload')
+            ->whereIn('type', ['with-me', 'by-me'])
+            ->name('shared-download');
         Route::get('/sharedByMe', 'sharedByMe')->name('shared-by-me');
         //Route::get('/sharedByMe/download', 'sharedByMeDownload')->name('shared-by-me-download');
         Route::delete('/file/delete', 'destroy')->name('file.delete');

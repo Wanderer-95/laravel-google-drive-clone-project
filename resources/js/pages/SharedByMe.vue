@@ -3,8 +3,7 @@ import FileIcon from '@/components/app/FileIcon.vue';
 import { httpGet } from '@/helper/httpHelper.js';
 import Dashboard from '@/pages/Dashboard.vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import RestoreFilesButton from '@/components/app/RestoreFilesButton.vue';
-import DeleteForeverFilesButton from '@/components/app/DeleteForeverFilesButton.vue';
+import DownloadFilesButton from '@/components/app/DownloadFilesButton.vue';
 
 const loadMoreIntersect = ref(null);
 const selectAllFiles = ref(false);
@@ -71,18 +70,6 @@ function onSelectCheckboxChange(file) {
 
 const selectIds = computed(() => Object.entries(selectedFiles.value).filter(f => f[1]).map(f => f[0]));
 
-function onRestore(restoreFiles) {
-    selectAllFiles.value = false;
-    selectedFiles.value = {};
-    allFiles.value.data = allFiles.value.data.filter(f => !restoreFiles.ids.includes(String(f.id)));
-}
-
-function onDeleteForever(deleteForeverFiles) {
-    selectAllFiles.value = false;
-    selectedFiles.value = {};
-    allFiles.value.data = allFiles.value.data.filter(f => !deleteForeverFiles.ids.includes(String(f.id)));
-}
-
 onMounted(() => {
     const observer = new IntersectionObserver((entries) => entries.forEach((entry) => entry.isIntersecting && loadMore()), {
         rootMargin: '-250px 0px 0px 0px',
@@ -119,8 +106,7 @@ watch(
     <Dashboard>
         <nav class="mb-6 flex items-center justify-end space-x-2 text-sm text-gray-600">
             <div class="flex items-center gap-4">
-                <DeleteForeverFilesButton :deleteForeverAllFiles="selectAllFiles" :deleteForeverFilesIds="selectIds" @deleteForever="onDeleteForever"  />
-                <RestoreFilesButton :restoreAllFiles="selectAllFiles" :restoreFilesIds="selectIds" @restore="onRestore" />
+                <DownloadFilesButton :all="selectAllFiles" :ids="selectIds" :shared-by-me="true"/>
             </div>
         </nav>
         <div class="max-h-[500px] overflow-auto">

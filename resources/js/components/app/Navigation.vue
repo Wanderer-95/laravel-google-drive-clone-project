@@ -3,8 +3,13 @@ import CreateNewDropdown from '@/components/app/CreateNewDropdown.vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { NavigationMenu, NavigationMenuLink } from '@/components/ui/navigation-menu';
 import { Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const page = usePage();
+const cleanPath = computed(() => {
+    const fullUrl = page.url;
+    return new URL(fullUrl, window.location.origin).pathname;
+});
 
 </script>
 
@@ -19,10 +24,10 @@ const page = usePage();
 
             <div class="mt-2">
                 <NavigationMenu>
-                    <NavigationMenuLink :href="route('myFiles')" :active="page.url === '/my-files'"> My Files </NavigationMenuLink>
-                    <NavigationMenuLink :href="route('shared-with-me')" :active="page.url === '/sharedWithMe'"> Shared with me </NavigationMenuLink>
-                    <NavigationMenuLink :href="route('shared-by-me')" :active="page.url === '/sharedByMe'"> Shared by me </NavigationMenuLink>
-                    <NavigationMenuLink :href="route('trash')" :active="page.url === '/trash'"> Trash </NavigationMenuLink>
+                    <NavigationMenuLink :href="route('myFiles')" :active="cleanPath === '/my-files'"> My Files </NavigationMenuLink>
+                    <NavigationMenuLink :href="route('shared-with-me')" :active="cleanPath === '/sharedWithMe'"> Shared with me </NavigationMenuLink>
+                    <NavigationMenuLink :href="route('shared-by-me')" :active="cleanPath === '/sharedByMe'"> Shared by me </NavigationMenuLink>
+                    <NavigationMenuLink :href="route('trash')" :active="cleanPath === '/trash'"> Trash </NavigationMenuLink>
                 </NavigationMenu>
             </div>
         </div>

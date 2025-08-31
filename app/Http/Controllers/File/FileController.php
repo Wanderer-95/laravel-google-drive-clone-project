@@ -15,9 +15,11 @@ use App\Models\File;
 use App\Models\FileShare;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -27,29 +29,42 @@ use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Kalnoy\Nestedset\Collection;
+use LaravelIdea\Helper\App\Models\_IH_File_C;
 use ZipArchive;
 
 class FileController extends Controller
 {
+    public function home(): RedirectResponse
+    {
+        return to_route('dashboard');
+    }
+
     public function myFiles(Request $request, ?File $folder = null): AnonymousResourceCollection|Response
     {
+        $search = $request->get('search');
         $user = Auth::user();
+
         if (is_null($folder)) {
             $folder = $this->getRoot();
         }
 
         if ($request->get('favorites') === '1') {
-            $files = $user->starred()->where('parent_id', $folder->id)->paginate(10);
+            $files = $user->starred();
         } else {
             $files = File::query()
-                ->where('parent_id', $folder->id)
                 ->where('created_by', $user->id)
+                ->where('_lft', '!=', 1)
                 ->orderBy('is_folder', 'desc')
                 ->orderBy('created_at', 'desc')
-                ->orderBy('id', 'desc')
-                ->paginate(10);
+                ->orderBy('id', 'desc');
         }
 
+        if (! is_null($search)) {
+            $files->where('name', 'like', "%$search%");
+        } else {
+            $files->where('parent_id', $folder->id);
+        }
+        $files = $files->paginate(10);
         $files = FileResource::collection($files);
 
         if ($request->wantsJson()) {
@@ -58,18 +73,23 @@ class FileController extends Controller
 
         $ancestors = FileResource::collection([...$folder->ancestors, $folder])->resolve();
         $parentFolder = FileResource::make($folder)->resolve();
-
         return Inertia::render('MyFiles', compact('files', 'parentFolder', 'ancestors'));
     }
 
-    public function trash(Request $request)
+    public function trash(Request $request): array|LengthAwarePaginator|Response
     {
-        $files = File::query()
+        $search = $request->get('search');
+        $query = File::query()
             ->onlyTrashed()
             ->where('created_by', Auth::id())
             ->orderBy('is_folder', 'desc')
-            ->orderBy('deleted_at', 'desc')
-            ->paginate(10);
+            ->orderBy('deleted_at', 'desc');
+
+        if (! is_null($search)) {
+            $query->where('name', 'like', "%$search%");
+        }
+
+        $files = $query->paginate(10);
 
         if ($request->wantsJson()) {
             return $files;
@@ -82,8 +102,14 @@ class FileController extends Controller
 
     public function sharedWithMe(Request $request)
     {
-        $files = File::getFilesWithMe()
-            ->paginate(10);
+        $search = $request->get('search');
+        $query = File::getFilesWithMe();
+
+        if (! is_null($search)) {
+            $query->where('name', 'like', "%$search%")->paginate(10);
+        }
+
+        $files = $query->paginate(10);
 
         if ($request->wantsJson()) {
             return $files;
@@ -96,8 +122,14 @@ class FileController extends Controller
 
     public function sharedByMe(Request $request)
     {
-        $files = File::getFilesByMe()
-            ->paginate(10);
+        $search = $request->get('search');
+        $query = File::getFilesByMe();
+
+        if (! is_null($search)) {
+            $query->where('name', 'like', "%$search%");
+        }
+
+        $files = $query->paginate(10);
 
         if ($request->wantsJson()) {
             return $files;
@@ -310,7 +342,7 @@ class FileController extends Controller
         return redirect()->back()->with('success', true);
     }
 
-    public function sharedWithMeDownload(FileActionRequest $request)
+    public function sharedDownload(FileActionRequest $request, string $type)
     {
         $data = $request->validated();
 
@@ -323,10 +355,14 @@ class FileController extends Controller
             ];
         }
 
-        $zipName = 'shared_with_me';
+        $zipName = match ($type) {
+            'with-me' => 'shared_with_me',
+            'by-me'   => 'shared_by_me',
+            default   => 'files'
+        };
 
         if ($all) {
-            $files = File::getFilesWithMe()->get();
+            $files = File::getFilesWithMe()->with('childrenRecursive')->get();
             $url = $this->createZip($files);
             $filename = $zipName.'.zip';
         } else {

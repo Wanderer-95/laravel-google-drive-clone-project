@@ -15,6 +15,7 @@ const isShiftPressed = ref(false);
 const lastSelectedIndex = ref(null);
 const isSelectedFavoritesFiles = ref(false);
 const params = ref(null);
+const search = ref('');
 
 const props = defineProps({
     files: Object,
@@ -55,7 +56,7 @@ function onSelectAllFiles() {
 }
 
 function onToggleFileSelect(file) {
-    const index = allFiles.value.data.findIndex(f => f.id === file.id);
+    const index = allFiles.value.data.findIndex((f) => f.id === file.id);
 
     if (isShiftPressed.value && lastSelectedIndex.value !== null) {
         const start = Math.min(lastSelectedIndex.value, index);
@@ -83,22 +84,21 @@ function onSelectCheckboxChange(file) {
     selectAllFiles.value = allFiles.value.data.every((f) => selectedFiles.value[f.id]);
 }
 
-const selectIds = computed(() => Object.entries(selectedFiles.value).filter(f => f[1]).map(f => f[0]));
+const selectIds = computed(() =>
+    Object.entries(selectedFiles.value)
+        .filter((f) => f[1])
+        .map((f) => f[0]),
+);
 
 function onDelete(deletedFiles) {
     selectAllFiles.value = false;
     selectedFiles.value = {};
-    allFiles.value.data = allFiles.value.data.filter(f => !deletedFiles.ids.includes(String(f.id)));
-}
-
-function onShare() {
-    selectAllFiles.value = false;
-    selectedFiles.value = {};
+    allFiles.value.data = allFiles.value.data.filter((f) => !deletedFiles.ids.includes(String(f.id)));
 }
 
 async function addToFavorite(file) {
     file.is_starred_file = !file.is_starred_file;
-    await httpRequest(route('file.add-favorite'), 'POST', {id: file.id})
+    await httpRequest(route('file.add-favorite'), 'POST', { id: file.id });
 }
 
 function onSelectFavoritesFiles() {
@@ -107,12 +107,13 @@ function onSelectFavoritesFiles() {
     } else {
         params.value.delete('favorites');
     }
-    router.get(route('myFiles')+'?'+params.value.toString());
+    router.get(route('myFiles') + '?' + params.value.toString());
 }
 
 onMounted(() => {
     params.value = new URLSearchParams(window.location.search);
     isSelectedFavoritesFiles.value = params.value.get('favorites') === '1';
+    search.value = params.value.get('search');
 
     const observer = new IntersectionObserver((entries) => entries.forEach((entry) => entry.isIntersecting && loadMore()), {
         rootMargin: '-250px 0px 0px 0px',
@@ -197,10 +198,11 @@ watch(
                                 v-model="isSelectedFavoritesFiles"
                                 @change="onSelectFavoritesFiles"
                                 class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring focus:ring-blue-400"
-                            >
+                            />
                         </th>
                         <th class="border-b px-6 py-3">Name</th>
                         <th class="border-b px-6 py-3">Owner</th>
+                        <th v-if="search" class="border-b px-6 py-3">Path</th>
                         <th class="border-b px-6 py-3">Last Modified</th>
                         <th class="border-b px-6 py-3">Size</th>
                     </tr>
@@ -222,12 +224,37 @@ watch(
                             />
                         </td>
                         <td class="border-b px-5 py-3 pr-0">
-                            <div class="inline-block items-center h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring focus:ring-blue-400" @click="addToFavorite(file)">
-                                <svg v-if="! file.is_starred_file" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="text-yellow-500 w-7 h-7">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                            <div
+                                class="inline-block h-4 w-4 items-center rounded border-gray-300 text-blue-600 focus:ring focus:ring-blue-400"
+                                @click="addToFavorite(file)"
+                            >
+                                <svg
+                                    v-if="!file.is_starred_file"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke-width="1.5"
+                                    stroke="currentColor"
+                                    class="h-7 w-7 text-yellow-500"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"
+                                    />
                                 </svg>
-                                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="text-yellow-500 w-7 h-7">
-                                    <path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.005Z" clip-rule="evenodd" />
+                                <svg
+                                    v-else
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    class="h-7 w-7 text-yellow-500"
+                                >
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.005Z"
+                                        clip-rule="evenodd"
+                                    />
                                 </svg>
                             </div>
                         </td>
@@ -236,6 +263,7 @@ watch(
                             {{ file.name }}
                         </td>
                         <td class="border-b px-6 py-4">{{ file.owner }}</td>
+                        <td v-if="search" class="border-b px-6 py-4">{{ file.path }}</td>
                         <td class="border-b px-6 py-4">{{ file.updated_at }}</td>
                         <td class="border-b px-6 py-4">{{ file.size }}</td>
                     </tr>
